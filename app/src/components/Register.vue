@@ -59,8 +59,7 @@ export default {
       const response = await axios.post(`${process.env.VUE_APP_API_ORIGIN}/api/auth/register`, {
         username: this.username,
         password: this.password,
-      },
-      { withCredentials: true });
+      });
       console.log(response);
       if (response.status === 201) {
         localStorage.setItem("username", response.data.username);
