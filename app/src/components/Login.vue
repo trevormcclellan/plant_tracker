@@ -53,26 +53,6 @@ export default {
       } else {
         alert("Login failed, please check your username and password");
       }
-      // const response = await fetch(
-      //   `${process.env.VUE_APP_API_ORIGIN}/api/auth/login`,
-      //   {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify({
-      //       username: this.username,
-      //       password: this.password,
-      //     }),
-      //   }
-      // );
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   localStorage.setItem("username", data.username);
-      //   this.$router.push({ name: "home" });
-      // } else {
-      //   alert("Login failed, please check your username and password");
-      // }
     },
   },
 };
