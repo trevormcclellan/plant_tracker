@@ -5,6 +5,7 @@ import axios from 'axios'
 
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/js/bootstrap.js'
+import './registerServiceWorker'
 
 const app = createApp(App)
 
