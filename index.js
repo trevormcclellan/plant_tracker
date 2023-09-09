@@ -6,8 +6,6 @@ const app = express();
 const DB = require('./database');
 const cors = require(`cors`)
 
-const authCookieName = 'token';
-
 // The service port. In production the application is statically hosted by the service on the same port.
 const port = process.argv.length > 2 ? process.argv[2] : 4000;
 
@@ -19,7 +17,6 @@ app.use(cookieParser());
 
 // Serve up the application's static content
 app.use(express.static('public'));
-console.log(process.env.CLIENT_ORIGIN)
 app.use(cors({
     origin: process.env.CLIENT_ORIGIN
 }))
@@ -91,64 +88,104 @@ secureApiRouter.get('/plants', async (req, res) => {
 });
 
 secureApiRouter.get('/plant/:id', async (req, res) => {
-    const event = await DB.getPlantById(req.params.id);
-    if (event) {
-        res.send(event);
-        return;
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        const plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            res.send(plant);
+            return;
+        }
+        res.status(404).send({ msg: 'Unknown' });
     }
-    res.status(404).send({ msg: 'Unknown' });
+    catch (err) {
+        res.status(500).send({ msg: err.message });
+    }
 });
 
 secureApiRouter.post('/plant/:id/water', async (req, res) => {
-    authToken = req.headers.authorization.split(' ')[1];
-    const user = await DB.getUserByToken(authToken);
-    let plant = await DB.getPlantById(req.params.id);
-    console.log(plant)
-    if (plant) {
-        plant = await DB.addActionToPlant(req.params.id, 'Watered');
-        res.send(plant);
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            plant = await DB.addActionToPlant(req.params.id, 'Watered');
+            res.send(plant);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
     }
-    else {
-        res.status(404).send({ msg: 'Unknown' });
+    catch (err) {
+        res.status(500).send({ msg: err.message });
     }
 });
 
 secureApiRouter.post('/plant/:id/fertilize', async (req, res) => {
-    authToken = req.headers.authorization.split(' ')[1];
-    const user = await DB.getUserByToken(authToken);
-    let plant = await DB.getPlantById(req.params.id);
-    console.log(plant)
-    if (plant) {
-        plant = await DB.addActionToPlant(req.params.id, 'Fertilized');
-        res.send(plant);
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            plant = await DB.addActionToPlant(req.params.id, 'Fertilized');
+            res.send(plant);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
     }
-    else {
-        res.status(404).send({ msg: 'Unknown' });
+    catch (err) {
+        res.status(500).send({ msg: err.message });
     }
 });
 
 secureApiRouter.post('/plant/:id/repot', async (req, res) => {
-    authToken = req.headers.authorization.split(' ')[1];
-    const user = await DB.getUserByToken(authToken);
-    let plant = await DB.getPlantById(req.params.id);
-    console.log(plant)
-    if (plant) {
-        plant = await DB.addActionToPlant(req.params.id, 'Repotted');
-        res.send(plant);
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            plant = await DB.addActionToPlant(req.params.id, 'Repotted');
+            res.send(plant);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
     }
-    else {
-        res.status(404).send({ msg: 'Unknown' });
+    catch (err) {
+        res.status(500).send({ msg: err.message });
     }
 });
 
 // Add Plant
 secureApiRouter.post('/plant', async (req, res) => {
-    authToken = req.headers.authorization.split(' ')[1];
-    const user = await DB.getUserByToken(authToken);
-    let plant = {...req.body}
-    await DB.addPlant(plant);
-    const plants = await DB.getPlants(user.username);
-    res.status(201).send(plants);
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = { ...req.body }
+        await DB.addPlant(plant);
+        const plants = await DB.getPlants(user.username);
+        res.status(201).send(plants);
+    }
+    catch (err) {
+        res.status(500).send({ msg: err.message });
+    }
 });
 
 // Default error handler

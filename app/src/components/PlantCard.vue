@@ -1,8 +1,8 @@
 <template>
-  <div class="card">
+  <div class="card" @click="goToPlantDetail">
     <div class="card-body">
       <h5 class="card-title">{{ plant.name }}</h5>
-      <div class="btn-group" role="group">
+      <div class="btn-group" role="group" @click.stop="">
         <button @click="waterPlant" class="btn btn-info">Water</button>
         <button @click="fertilizePlant" class="btn btn-warning">
           Fertilize
@@ -19,6 +19,7 @@
 
 <script>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import axios from 'axios';
 
 export default {
@@ -26,6 +27,7 @@ export default {
     plant: Object,
   },
   setup(props) {
+    const router = useRouter();
     const thisPlant = ref(props.plant);
 
     const waterPlant = async () => {
@@ -79,6 +81,10 @@ export default {
       return null;
     };
 
+    const goToPlantDetail = () => {
+      router.push({ name: "plant-detail", params: { id: thisPlant.value._id } });
+    };
+
     return {
       waterPlant,
       fertilizePlant,
@@ -86,6 +92,7 @@ export default {
       daysSinceDate,
       thisPlant,
       getLastAction,
+      goToPlantDetail,
     };
   },
   computed: {

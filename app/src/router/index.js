@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PlantsView from '../views/PlantsView.vue'
+import PlantDetail from '../components/PlantDetail.vue'
 
 const routes = [
   {
@@ -17,6 +18,17 @@ const routes = [
     name: 'register',
     component: () => import(/* webpackChunkName: "about" */ '../views/RegisterView.vue')
   },
+  {
+    path: '/plant/:id',
+    name: 'plant-detail',
+    component: PlantDetail,
+    props: true, // Allows passing props via route params
+  },
+  //catch all redirect to home
+  {
+    path: '/:catchAll(.*)',
+    redirect: '/'
+  }
 ]
 
 const router = createRouter({
