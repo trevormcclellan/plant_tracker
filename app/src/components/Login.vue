@@ -48,7 +48,7 @@ export default {
       );
       if (response.status === 200) {
         localStorage.setItem("username", this.username);
-        sessionStorage.setItem("token", response.data.token);
+        localStorage.setItem("token", response.data.token);
         this.$router.push({ name: "home" });
       } else {
         alert("Login failed, please check your username and password");

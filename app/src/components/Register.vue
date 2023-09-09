@@ -63,7 +63,7 @@ export default {
       console.log(response);
       if (response.status === 201) {
         localStorage.setItem("username", response.data.username);
-        sessionStorage.setItem("token", response.data.token);
+        localStorage.setItem("token", response.data.token);
         this.$router.push({ name: "home" });
       } else {
         alert("Registration failed, please try again");

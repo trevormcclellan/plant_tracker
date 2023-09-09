@@ -13,7 +13,7 @@ app.use(router)
 
 axios.interceptors.request.use(
   config => {
-    config.headers['Authorization'] = `Bearer ${sessionStorage.getItem('token')}`;
+    config.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
         return config;
     },
     error => {
@@ -34,7 +34,7 @@ axios.interceptors.response.use(
                 if (e != 13 || part.substring(0, 13).toLowerCase() != 'bearer-update') continue;
                  part.substring(eq + 1).trim();
                 token = part.substring(eq + 1).trim();
-                sessionStorage.setItem('token', token);
+                localStorage.setItem('token', token);
                 break;
             }
         }
