@@ -188,6 +188,9 @@ export default defineComponent({
           router.push({ name: "login" });
         }
       }
+      else {
+        router.push({ name: "login" });
+      }
     };
 
     onMounted(checkAuth);
