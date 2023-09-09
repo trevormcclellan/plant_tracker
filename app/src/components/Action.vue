@@ -52,12 +52,12 @@ export default {
         if (response.status === 201) {
           this.$emit("getPlants");
           // Make a success alert
-          this.$emit("showSuccess", this.selectedAction)
+          this.$emit("showSuccess")
         }
       } catch (error) {
         this.loading = false;
         // Make an error alert
-        this.$emit("showError", this.selectedAction, error)
+        this.$emit("showError", error)
       }
     },
   },

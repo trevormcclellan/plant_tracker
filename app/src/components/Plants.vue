@@ -11,11 +11,9 @@
       <div v-if="positiveAlert" id="positive-alert-popup" class="alert alert-success" role="alert">{{ alertText }}</div>
     </div>
 
-    <Modal :showModal="showModal" :loading="loading" :hideFooter="addingPlant || editingPlant" @closeModal="handleCloseModal">
+    <Modal :showModal="showModal" :loading="loading" :hideFooter="true" @closeModal="handleCloseModal">
       <template #title>{{modalTitle}}</template>
       <Action v-if="addingPlant" @getPlants="getPlants" @showSuccess="showSuccess" @showError="showError"></Action>
-      <EditRecord v-else-if="editingPlant" @getPlants="getPlants" @showSuccess="showSuccess" @showError="showError" :record="editRecord" :type="editType"></EditRecord>
-      <p v-else>{{ deleteMessage }}</p>
     </Modal>
 
     <h1 class="mt-5">Plants</h1>
@@ -32,28 +30,19 @@ import { ref, defineComponent, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import Modal from "./Modal.vue";
 import Action from "./Action.vue";
-import EditRecord from "./EditRecord.vue";
-import TableComponent from "./Table.vue";
 import PlantCard from "./PlantCard.vue";
 import axios from "axios";
 
 export default defineComponent({
   components: {
     Modal,
-    TableComponent,
     Action,
-    EditRecord,
     PlantCard,
   },
   name: "DNSRecords",
   setup() {
     const router = useRouter();
     const showModal = ref(false);
-    const deleteName = ref("");
-    const deleteType = ref("");
-    const editRecord = ref({});
-    const editType = ref("");
-    const deleteMessage = ref("");
     const loading = ref(false);
     const plantsLoading = ref(false);
     const negativeAlert = ref(false);
@@ -61,7 +50,6 @@ export default defineComponent({
     const alertText = ref("");
     const modalTitle = ref("");
     const addingPlant = ref(false);
-    const editingPlant = ref(false);
     const plants = ref([]);
 
     const getPlants = async () => {
@@ -76,7 +64,6 @@ export default defineComponent({
         const response = await axios.get(apiUrl, { headers });
 
         if (response.status === 200) {
-          console.log(response.data)
           plants.value = response.data;
         }
       } catch (error) {
@@ -86,68 +73,15 @@ export default defineComponent({
       plantsLoading.value = false;
     };
 
-    const handleDelete = (name, type) => {
-      addingPlant.value = false;
-      editingPlant.value = false;
-      modalTitle.value = "Delete Record";
-      showModal.value = true;
-      deleteName.value = name;
-      deleteType.value = type;
-
-      if (type === "domain") {
-        deleteMessage.value =
-          "Deleting a domain will delete all records associated with it. Are you sure you want to continue?";
-      } else {
-        deleteMessage.value = `Are you sure you want to delete this ${type} record?`;
-      }
-    };
-
-    const handleEdit = (item, type) => {
-      addingPlant.value = false;
-      editingPlant.value = true;
-      modalTitle.value = "Edit Record";
-      showModal.value = true;
-      editRecord.value = item;
-      editType.value = type;
-    };
-
     const handleCloseModal = async (value) => {
-      if (value && deleteName.value && deleteType.value) {
-        try {
-          let apiUrl = "";
-          if (deleteType.value === "domain") {
-            apiUrl = `${process.env.VUE_APP_API_ORIGIN}/api/zone/${deleteName.value}`;
-          } else {
-            apiUrl = `${process.env.VUE_APP_API_ORIGIN}/api/zone/${deleteName.value}/${deleteType.value}`;
-          }
-
-          loading.value = true;
-          const response = await axios.delete(apiUrl);
-
-          if (response.status === 200) {
-            showSuccess("delete");
-            await getPlants();
-          }
-        } catch (error) {
-          loading.value = false;
-          showError(`delete ${deleteType.value}`, error);
-        }
-      }
       loading.value = false;
       showModal.value = false;
-      deleteName.value = "";
-      deleteType.value = "";
-      deleteMessage.value = "";
     };
 
-    const showSuccess = (action, editing=false) => {
+    const showSuccess = () => {
       showModal.value = false;
       positiveAlert.value = true;
-      if (action === "delete") {
-        alertText.value = `Record deleted successfully.`;
-      } else {
-        alertText.value = `Plant ${editing ? 'updated' : 'added'} successfully.`;
-      }
+      alertText.value = "Plant added successfully."
 
       setTimeout(() => {
         alertText.value = "";
@@ -155,14 +89,14 @@ export default defineComponent({
       }, 3000);
     };
 
-    const showError = (action, error, editing=false) => {
+    const showError = (error) => {
       showModal.value = false;
       negativeAlert.value = true;
 
       if (error.response?.data?.message) {
         alertText.value = "Error: " + error.response.data.message;
       } else {
-        alertText.value = `There was an error ${editing ? 'updating' : 'adding'} the plant.`;
+        alertText.value = `There was an error adding the plant.`;
       }
 
       setTimeout(() => {
@@ -174,7 +108,6 @@ export default defineComponent({
     const addPlant = () => {
       modalTitle.value = "Add Plant";
       showModal.value = true;
-      editingPlant.value = false;
       addingPlant.value = true;
     };
 
@@ -197,11 +130,6 @@ export default defineComponent({
 
     return {
       showModal,
-      deleteName,
-      deleteType,
-      deleteMessage,
-      editRecord,
-      editType,
       loading,
       plantsLoading,
       negativeAlert,
@@ -209,9 +137,6 @@ export default defineComponent({
       alertText,
       modalTitle,
       addingPlant,
-      editingPlant,
-      handleDelete,
-      handleEdit,
       handleCloseModal,
       showSuccess,
       showError,

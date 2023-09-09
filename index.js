@@ -188,6 +188,54 @@ secureApiRouter.post('/plant', async (req, res) => {
     }
 });
 
+// Delete Plant
+secureApiRouter.delete('/plant/:id', async (req, res) => {
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            await DB.deletePlant(req.params.id);
+            const plants = await DB.getPlants(user.username);
+            res.send(plants);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
+    }
+    catch (err) {
+        res.status(500).send({ msg: err.message });
+    }
+});
+
+// Update Plant
+secureApiRouter.put('/plant/:id', async (req, res) => {
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            await DB.updatePlant(req.params.id, req.body);
+            plant = await DB.getPlantById(req.params.id);
+            res.send(plant);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
+    }
+    catch (err) {
+        res.status(500).send({ msg: err.message });
+    }
+});
+
 // Default error handler
 app.use(function (err, req, res, next) {
     res.status(500).send({ type: err.name, message: err.message });

@@ -1,5 +1,20 @@
 <template>
   <div class="container">
+    <div v-if="loading" id="overlay">
+      <div id="overlay-content">
+        <div class="spinner-border" role="status"><span class="sr-only"></span></div>
+        <div>Loading...</div>
+      </div>
+    </div>
+    <div id="alerts" class="fixed-top">
+      <div v-if="negativeAlert" id="negative-alert-popup" class="alert alert-danger" role="alert">{{ alertText }}</div>
+      <div v-if="positiveAlert" id="positive-alert-popup" class="alert alert-success" role="alert">{{ alertText }}</div>
+    </div>
+    <Modal :showModal="showModal" :loading="loading" :hideFooter="editingPlant" @closeModal="handleCloseModal">
+      <template #title>{{modalTitle}}</template>
+      <EditPlant v-if="editingPlant" @updatePlant="updatePlant" @showSuccess="showSuccess" @showError="showError" :plant="plant"></EditPlant>
+      <p v-else>{{ deleteMessage }}</p>
+    </Modal>
     <!-- Display plant details -->
     <div class="title-div">
       <h1 class="card-title">{{ plant.name }}</h1>
@@ -15,7 +30,7 @@
     <h5 class="card-title">Past Actions</h5>
     <div class="card" id="past-actions">
       <div class="card-body past-actions-scrollable">
-        <div class="list-group">
+        <div class="list-group" v-if="plant.actions?.length">
           <a
             v-for="action in actions"
             :key="action.id"
@@ -51,6 +66,7 @@
             }}</span>
           </a>
         </div>
+        <div v-else>None yet</div>
       </div>
     </div>
   </div>
@@ -59,14 +75,28 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import Modal from "./Modal.vue";
+import EditPlant from "./EditPlant.vue";
 
 export default {
+  components: {
+    Modal,
+    EditPlant,
+  },
   props: {
     id: String, // Prop for the plant ID
   },
   setup(props) {
     const router = useRouter();
     const plant = ref({actions: []});
+    const showModal = ref(false);
+    const modalTitle = ref("");
+    const deleteMessage = ref("");
+    const loading = ref(false);
+    const editingPlant = ref(false);
+    const negativeAlert = ref(false);
+    const positiveAlert = ref(false);
+    const alertText = ref("");
 
     const fetchPlantDetails = async () => {
       try {
@@ -85,10 +115,71 @@ export default {
 
     const editPlant = () => {
       // Handle editing the plant (e.g., navigate to edit page)
+      modalTitle.value = "Edit Plant";
+      editingPlant.value = true;
+      showModal.value = true;
     };
 
     const deletePlant = () => {
       // Handle deleting the plant (e.g., show confirmation modal)
+      editingPlant.value = false;
+      modalTitle.value = "Delete Plant";
+      deleteMessage.value = `Are you sure you want to delete ${plant.value.name}?`;
+      showModal.value = true;
+    };
+
+    const updatePlant = (updatedPlant) => {
+      showModal.value = false;
+      plant.value = updatedPlant;
+      editingPlant.value = false;
+    };
+
+    const handleCloseModal = async (val) => {
+      // Handle closing the modal (e.g., hide modal)
+      showModal.value = false;
+      if (val) {
+        try {
+          loading.value = true;
+          const response = await axios.delete(
+            `${process.env.VUE_APP_API_ORIGIN}/api/plant/${props.id}`
+          );
+          loading.value = false;
+          if (response.status === 200) {
+            router.push("/");
+          }
+        } catch (error) {
+          loading.value = false;
+          console.error("Error deleting plant:", error);
+          showError(error);
+        }
+      }
+    };
+
+    const showSuccess = () => {
+      showModal.value = false;
+      positiveAlert.value = true;
+      alertText.value = `Plant updated successfully.`;
+
+      setTimeout(() => {
+        alertText.value = "";
+        positiveAlert.value = false;
+      }, 3000);
+    };
+
+    const showError = (error, editing=false) => {
+      showModal.value = false;
+      negativeAlert.value = true;
+
+      if (error.response?.data?.message) {
+        alertText.value = "Error: " + error.response.data.message;
+      } else {
+        alertText.value = `There was an error ${editing ? 'updating' : 'deleting'} the plant.`;
+      }
+
+      setTimeout(() => {
+        alertText.value = "";
+        negativeAlert.value = false;
+      }, 10000);
     };
 
     // Fetch plant details when the component is mounted
@@ -100,6 +191,18 @@ export default {
       plant,
       editPlant,
       deletePlant,
+      updatePlant,
+      showModal,
+      modalTitle,
+      deleteMessage,
+      handleCloseModal,
+      loading,
+      editingPlant,
+      showSuccess,
+      showError,
+      negativeAlert,
+      positiveAlert,
+      alertText,
     };
   },
   computed: {
@@ -165,5 +268,26 @@ export default {
 
 .title-div {
   margin: 10px;
+}
+
+#overlay {
+  position: fixed; /* Sit on top of the page content */
+  width: 100%; /* Full width (cover the whole page) */
+  height: 100%; /* Full height (cover the whole page) */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5); /* Black background with opacity */
+  z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
+}
+
+#overlay-content {
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
 }
 </style>

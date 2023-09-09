@@ -60,6 +60,16 @@ function getPlants(username) {
     return cursor.toArray();
 }
 
+function deletePlant(id) {
+    const query = { _id: new ObjectId(id) };
+    return plantCollection.deleteOne(query);
+}
+
+function updatePlant(id, plant) {
+    const query = { _id: new ObjectId(id) };
+    return plantCollection.updateOne(query, { $set: plant });
+}
+
 module.exports = { 
     getUser,
     getUserByToken,
@@ -68,4 +78,6 @@ module.exports = {
     addActionToPlant,
     getPlantById,
     getPlants,
+    deletePlant,
+    updatePlant,
 };

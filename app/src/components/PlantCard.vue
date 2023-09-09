@@ -1,7 +1,7 @@
 <template>
   <div class="card" @click="goToPlantDetail">
     <div class="card-body">
-      <h5 class="card-title">{{ plant.name }}</h5>
+      <h5 class="card-title" @click="goToPlantDetail">{{ plant.name }}</h5>
       <div class="btn-group" role="group" @click.stop="">
         <button @click="waterPlant" class="btn btn-info">Water</button>
         <button @click="fertilizePlant" class="btn btn-warning">
