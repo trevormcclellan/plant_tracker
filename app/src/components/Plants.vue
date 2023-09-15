@@ -19,7 +19,10 @@
     <h1 class="mt-5">Plants</h1>
     <div class="container">
       <button class="btn btn-success mb-3" @click="addPlant">Add Plant</button>
-      <PlantCard v-for="plant in plants" :plant="plant" :key="plant._id" />
+      <div class="input-group mb-3">
+        <input type="text" v-model="searchInput" class="form-control" placeholder="Search" aria-label="Search">
+      </div>
+      <PlantCard v-for="plant in filteredPlants" :plant="plant" :key="plant._id" />
     </div>
 
   </div>
@@ -51,6 +54,7 @@ export default defineComponent({
     const modalTitle = ref("");
     const addingPlant = ref(false);
     const plants = ref([]);
+    const searchInput = ref("");
 
     const getPlants = async () => {
       plantsLoading.value = true;
@@ -144,7 +148,21 @@ export default defineComponent({
       addPlant,
       plants,
       checkAuth,
+      searchInput,
     };
+  },
+  computed: {
+    filteredPlants() {
+      if (!this.searchInput) {
+        return this.plants;
+      }
+      if (!this.plants) {
+        return [];
+      }
+      return this.plants.filter((plant) => {
+        return plant.name.toLowerCase().includes(this.searchInput.toLowerCase());
+      });
+    },
   },
 });
 </script>
