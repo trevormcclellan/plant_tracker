@@ -70,14 +70,40 @@ function updatePlant(id, plant) {
     return plantCollection.updateOne(query, { $set: plant });
 }
 
-module.exports = { 
+async function searchPlants(query, owner, maxEdits) {
+    let pipeline = [
+        {
+            $search: {
+                "index": "name",
+                "text": {
+                    "query": query,
+                    "path": "name",
+                    "fuzzy": {
+                        "maxEdits": maxEdits
+                    }
+                }
+            }
+        },
+        {
+            $match: {
+                "owner": owner
+            }
+        }
+    ];
+
+    const aggCursor = plantCollection.aggregate(pipeline);
+    return aggCursor.toArray();
+}
+
+module.exports = {
     getUser,
     getUserByToken,
-    createUser, 
-    addPlant, 
+    createUser,
+    addPlant,
     addActionToPlant,
     getPlantById,
     getPlants,
     deletePlant,
     updatePlant,
+    searchPlants,
 };
