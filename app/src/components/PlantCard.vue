@@ -1,9 +1,9 @@
 <template>
   <div class="card" @click="goToPlantDetail">
     <div class="card-body">
-      <h5 class="card-title" @click.stop="">
+      <h5 class="card-title">
         <span class="plant-name" @click="goToPlantDetail">{{ thisPlant.name }}</span>
-        <button @click="flagPlant" :class="`btn btn-sm btn-outline-${thisPlant.flagged ? 'danger' : 'secondary'}`">
+        <button @click.stop="flagPlant" :class="`btn btn-sm btn-outline-${thisPlant.flagged ? 'danger' : 'secondary'}`">
           <font-awesome-icon :icon="`fa-${thisPlant.flagged ? 'solid' : 'regular'} fa-flag`" />
         </button>
         </h5>
