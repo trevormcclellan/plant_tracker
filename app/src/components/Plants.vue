@@ -22,7 +22,18 @@
       <div class="input-group mb-3">
         <input type="text" v-model="searchInput" class="form-control" placeholder="Search" aria-label="Search">
       </div>
-      <PlantCard v-for="plant in filteredPlants" :plant="plant" :key="plant._id" />
+      <div class="input-group mb-3">
+        <label class="input-group-text" for="sort-select">Sort By</label>
+        <select v-model="sortBy" id="sort-select" class="form-select" aria-label="Default select example">
+          <option value="default">Default</option>
+          <option value="lastActionAsc">Last Action (ascending)</option>
+          <option value="lastActionDesc">Last Action (descending)</option>
+          <option value="nameAsc">Name (ascending)</option>
+          <option value="nameDesc">Name (descending)</option>
+          <option value="flagged">Flagged</option>
+        </select>
+      </div>
+      <PlantCard v-for="plant in sortedPlants" :plant="plant" :key="plant._id" />
     </div>
 
   </div>
@@ -55,6 +66,7 @@ export default defineComponent({
     const addingPlant = ref(false);
     const plants = ref([]);
     const searchInput = ref("");
+    const sortBy = ref("default");
 
     const getPlants = async () => {
       plantsLoading.value = true;
@@ -130,6 +142,20 @@ export default defineComponent({
       }
     };
 
+    const getLastAction = (plant) => {
+      let actions = plant.actions;
+      if (actions) {
+        actions.sort((a, b) => {
+          return new Date(a.time) - new Date(b.time);
+        });
+        if (actions && actions.length > 0) {
+          const lastAction = actions[actions.length - 1];
+          return lastAction;
+        }
+      }
+      return { action: null, time: null };
+    };
+
     onMounted(checkAuth);
 
     return {
@@ -148,7 +174,9 @@ export default defineComponent({
       addPlant,
       plants,
       checkAuth,
+      getLastAction,
       searchInput,
+      sortBy,
     };
   },
   computed: {
@@ -163,6 +191,49 @@ export default defineComponent({
         return plant.name.toLowerCase().includes(this.searchInput.toLowerCase());
       });
     },
+    sortedPlants() {
+      let plantsToSort = JSON.parse(JSON.stringify(this.filteredPlants));
+      if (this.sortBy === "default") {
+        return plantsToSort;
+      }
+      else if (this.sortBy === "lastActionAsc") {
+        return plantsToSort.sort((a, b) => {
+          let aLastAction = this.getLastAction(a);
+          let bLastAction = this.getLastAction(b);
+          return new Date(bLastAction.time) - new Date(aLastAction.time);
+        });
+      }
+      else if (this.sortBy === "lastActionDesc") {
+        return plantsToSort.sort((a, b) => {
+          let aLastAction = this.getLastAction(a);
+          let bLastAction = this.getLastAction(b);
+          return new Date(aLastAction.time) - new Date(bLastAction.time);
+        });
+      }
+      else if (this.sortBy === "nameAsc") {
+        return plantsToSort.sort((a, b) => {
+          return a.name.localeCompare(b.name);
+        });
+      }
+      else if (this.sortBy === "nameDesc") {
+        return plantsToSort.sort((a, b) => {
+          return b.name.localeCompare(a.name);
+        });
+      }
+      else if (this.sortBy === "flagged") {
+        return plantsToSort.sort((a, b) => {
+          if (a.flagged && !b.flagged) {
+            return -1;
+          }
+          else if (!a.flagged && b.flagged) {
+            return 1;
+          }
+          else {
+            return 0;
+          }
+        });
+      }
+    }
   },
 });
 </script>
