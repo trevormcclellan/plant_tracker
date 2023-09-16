@@ -70,11 +70,17 @@ function updatePlant(id, plant) {
     return plantCollection.updateOne(query, { $set: plant });
 }
 
+async function flagPlant(id, flag) {
+    const query = { _id: new ObjectId(id) };
+    await plantCollection.updateOne(query, { $set: { flagged: flag } });
+    return plantCollection.findOne(query);
+}
+
 async function searchPlants(query, owner, maxEdits) {
     if (!maxEdits) {
         maxEdits = 1;
     }
-    
+
     let pipeline = [
         {
             $search: {
@@ -118,5 +124,6 @@ module.exports = {
     getPlants,
     deletePlant,
     updatePlant,
+    flagPlant,
     searchPlants,
 };

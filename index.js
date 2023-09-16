@@ -173,6 +173,29 @@ secureApiRouter.post('/plant/:id/repot', async (req, res) => {
     }
 });
 
+secureApiRouter.post('/plant/:id/flag', async (req, res) => {
+    try {
+        authToken = req.headers.authorization.split(' ')[1];
+        const user = await DB.getUserByToken(authToken);
+        let plant = await DB.getPlantById(req.params.id);
+        if (plant && user) {
+            if (user.username !== plant.owner) {
+                res.status(401).send({ msg: 'Unauthorized' });
+                return;
+            }
+            let flagged = plant.flagged || false;
+            plant = await DB.flagPlant(req.params.id, !flagged);
+            res.send(plant);
+        }
+        else {
+            res.status(404).send({ msg: 'Unknown' });
+        }
+    }
+    catch (err) {
+        res.status(500).send({ msg: err.message });
+    }
+});
+
 // Add Plant
 secureApiRouter.post('/plant', async (req, res) => {
     try {

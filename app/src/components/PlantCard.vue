@@ -1,12 +1,15 @@
 <template>
   <div class="card" @click="goToPlantDetail">
     <div class="card-body">
-      <h5 class="card-title" @click="goToPlantDetail">{{ plant.name }}</h5>
+      <h5 class="card-title" @click.stop="">
+        <span class="plant-name" @click="goToPlantDetail">{{ thisPlant.name }}</span>
+        <button @click="flagPlant" :class="`btn btn-sm btn-outline-${thisPlant.flagged ? 'danger' : 'secondary'}`">
+          <font-awesome-icon :icon="`fa-${thisPlant.flagged ? 'solid' : 'regular'} fa-flag`" />
+        </button>
+        </h5>
       <div class="btn-group" role="group" @click.stop="">
         <button @click="waterPlant" class="btn btn-info">Water</button>
-        <button @click="fertilizePlant" class="btn btn-warning">
-          Fertilize
-        </button>
+        <button @click="fertilizePlant" class="btn btn-warning">Fertilize</button>
         <button @click="repotPlant" class="btn btn-success">Repot</button>
       </div>
       <p class="mt-3" v-if="thisPlant?.actions?.length">
@@ -63,6 +66,17 @@ export default {
       }
     };
 
+    const flagPlant = async () => {
+      let response = await axios.post(`${process.env.VUE_APP_API_ORIGIN}/api/plant/${props.plant._id}/flag`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (response.status === 200) {
+        thisPlant.value = response.data;
+      }
+    };
+
     const daysSinceDate = (date) => {
       const oneDay = 24 * 60 * 60 * 1000;
       const today = new Date();
@@ -89,6 +103,7 @@ export default {
       waterPlant,
       fertilizePlant,
       repotPlant,
+      flagPlant,
       daysSinceDate,
       thisPlant,
       getLastAction,
@@ -119,4 +134,39 @@ export default {
 .card {
   margin-bottom: 10px;
 }
+
+.plant-name {
+  margin-right: 5px;
+}
+
+.btn-outline-danger:hover {
+  color: #dc3545 !important;
+  background-color: #fff !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-outline-secondary:hover {
+  color: #6c757d !important;
+  background-color: #fff !important;
+  border-color: #6c757d !important;
+}
+/* .card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-container {
+  display: grid;
+  grid-template-columns: 1fr auto; /* 1fr for plant name, auto for flag button */
+
+/* .card-title {
+  display: inline-block;
+  margin-right: 10px;
+} */
+
+/* .flag-button {
+  position: absolute;
+  right: 10px;
+  top: 30%;
+} */
 </style>
