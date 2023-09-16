@@ -240,7 +240,7 @@ secureApiRouter.post('/search', async (req, res) => {
     try {
         authToken = req.headers.authorization.split(' ')[1];
         const user = await DB.getUserByToken(authToken);
-        let plants = await DB.searchPlants(req.body.query, user.username, req.body.maxEdits || 2);
+        let plants = await DB.searchPlants(req.body.query, user.username, req.body.maxEdits);
         res.send(plants);
     }
     catch (err) {

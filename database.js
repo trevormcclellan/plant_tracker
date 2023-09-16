@@ -71,6 +71,10 @@ function updatePlant(id, plant) {
 }
 
 async function searchPlants(query, owner, maxEdits) {
+    if (!maxEdits) {
+        maxEdits = 1;
+    }
+    
     let pipeline = [
         {
             $search: {
@@ -91,8 +95,17 @@ async function searchPlants(query, owner, maxEdits) {
         }
     ];
 
-    const aggCursor = plantCollection.aggregate(pipeline);
-    return aggCursor.toArray();
+    let aggCursor = plantCollection.aggregate(pipeline);
+    let array = await aggCursor.toArray();
+
+    if (!array.length && maxEdits === 1) {
+        console.log("Trying with maxEdits = 2");
+        pipeline[0].$search.text.fuzzy.maxEdits = 2;
+        aggCursor = plantCollection.aggregate(pipeline);
+        array = aggCursor.toArray();
+    }
+
+    return array;
 }
 
 module.exports = {
