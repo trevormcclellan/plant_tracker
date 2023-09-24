@@ -18,7 +18,7 @@ app.use(cookieParser());
 // Serve up the application's static content
 app.use(express.static('public'));
 app.use(cors({
-    origin: process.env.CLIENT_ORIGIN
+    origin: [`${process.env.CLIENT_ORIGIN}`, `${process.env.DEV_CLIENT_ORIGIN}`],
 }))
 
 // Router for service endpoints
