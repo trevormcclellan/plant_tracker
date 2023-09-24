@@ -34,7 +34,6 @@
           <a
             v-for="action in actions"
             :key="action.id"
-            href="#"
             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
           >
             <!-- Icon based on action type -->

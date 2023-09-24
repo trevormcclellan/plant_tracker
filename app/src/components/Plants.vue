@@ -33,7 +33,12 @@
           <option value="flagged">Flagged</option>
         </select>
       </div>
-      <PlantCard v-for="plant in sortedPlants" :plant="plant" :key="plant._id" />
+      <draggable v-bind="dragOptions" :force-fallback="true" :force-autoscroll-fallback="true" :scroll-speed="500" :scroll-sensitivity="10" v-model="sortedPlants" item-key="_id">
+        <template #item="{ element }">
+          <PlantCard :plant="element" :key="element._id" />
+        </template>
+      </draggable>
+      <!-- <PlantCard v-for="plant in sortedPlants" :plant="plant" :key="plant._id" /> -->
     </div>
 
   </div>
@@ -46,14 +51,16 @@ import Modal from "./Modal.vue";
 import Action from "./Action.vue";
 import PlantCard from "./PlantCard.vue";
 import axios from "axios";
+import draggable from "vuedraggable";
 
 export default defineComponent({
   components: {
     Modal,
     Action,
     PlantCard,
+    draggable
   },
-  name: "DNSRecords",
+  name: "Plants",
   setup() {
     const router = useRouter();
     const showModal = ref(false);
@@ -237,6 +244,14 @@ export default defineComponent({
           }
         });
       }
+    },
+    dragOptions() {
+      return {
+        animation: 200,
+        group: "description",
+        disabled: false,
+        ghostClass: "ghost"
+      };
     }
   },
 });
@@ -261,5 +276,10 @@ export default defineComponent({
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 3;
+}
+
+.ghost {
+  opacity: 0.5;
+  background: #c8ebfb;
 }
 </style>
