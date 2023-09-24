@@ -18,3 +18,11 @@ try {
   console.error('Error building the project:', error.stderr.toString());
   process.exit(1);
 }
+
+try {
+    execSync('git checkout main');
+    console.log('Switched to the main branch');
+  } catch (error) {
+    console.error('Error switching to main dev branch:', error.stderr.toString());
+    process.exit(1);
+  }
