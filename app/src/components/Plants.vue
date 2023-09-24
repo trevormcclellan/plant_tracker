@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import { ref, defineComponent, onMounted } from "vue";
+import { ref, defineComponent, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import Modal from "./Modal.vue";
 import Action from "./Action.vue";
@@ -66,7 +66,11 @@ export default defineComponent({
     const addingPlant = ref(false);
     const plants = ref([]);
     const searchInput = ref("");
-    const sortBy = ref("default");
+    const sortBy = ref(localStorage.getItem("sortBy") || "default");
+
+    watch(sortBy, (newVal) => {
+      localStorage.setItem("sortBy", newVal);
+    });
 
     const getPlants = async () => {
       plantsLoading.value = true;
