@@ -33,7 +33,12 @@
           <option value="flagged">Flagged</option>
         </select>
       </div>
-      <PlantCard v-for="plant in sortedPlants" :plant="plant" :key="plant._id" />
+      <Container>
+        <Draggable v-for="plant in sortedPlants" :key="plant._id">
+          <PlantCard :plant="plant" />
+        </Draggable>
+      </Container>
+      <!-- <PlantCard v-for="plant in sortedPlants" :plant="plant" :key="plant._id" /> -->
     </div>
 
   </div>
@@ -46,12 +51,15 @@ import Modal from "./Modal.vue";
 import Action from "./Action.vue";
 import PlantCard from "./PlantCard.vue";
 import axios from "axios";
+import { Container, Draggable } from "vue3-smooth-dnd";
 
 export default defineComponent({
   components: {
     Modal,
     Action,
     PlantCard,
+    Container,
+    Draggable,
   },
   name: "DNSRecords",
   setup() {
