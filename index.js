@@ -21,6 +21,16 @@ app.use(cors({
     origin: [`${process.env.CLIENT_ORIGIN}`, `${process.env.DEV_CLIENT_ORIGIN}`],
 }))
 
+function getAuthToken(req, res) {
+    if (req.headers.authorization) {
+        return req.headers.authorization.split(' ')[1];
+    }
+    else {
+        res.status(401).send({ msg: 'Unauthorized' });
+        return;
+    }
+}
+
 // Router for service endpoints
 var apiRouter = express.Router();
 app.use(`/api`, apiRouter);
@@ -60,7 +70,7 @@ apiRouter.post('/auth/login', async (req, res) => {
 apiRouter.get('/user/:username', async (req, res) => {
     const user = await DB.getUser(req.params.username);
     if (user) {
-        const token = req.headers.authorization.split(' ')[1];
+        const token = getAuthToken(req, res);
         res.send({ username: user.username, authenticated: token === user.token });
         return;
     }
@@ -71,17 +81,15 @@ var secureApiRouter = express.Router();
 apiRouter.use(secureApiRouter);
 
 secureApiRouter.use(async (req, res, next) => {
-    authToken = req.headers.authorization.split(' ')[1];
+    authToken = getAuthToken(req, res);
     const user = await DB.getUserByToken(authToken);
     if (user) {
         next();
-    } else {
-        res.status(401).send({ msg: 'Unauthorized' });
     }
 });
 
 secureApiRouter.get('/plants', async (req, res) => {
-    authToken = req.headers.authorization.split(' ')[1];
+    authToken = getAuthToken(req, res);
     const user = await DB.getUserByToken(authToken);
     const plants = await DB.getPlants(user.username);
     res.send(plants);
@@ -89,7 +97,7 @@ secureApiRouter.get('/plants', async (req, res) => {
 
 secureApiRouter.get('/plant/:id', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         const plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -109,7 +117,7 @@ secureApiRouter.get('/plant/:id', async (req, res) => {
 
 secureApiRouter.post('/plant/:id/water', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -131,7 +139,7 @@ secureApiRouter.post('/plant/:id/water', async (req, res) => {
 
 secureApiRouter.post('/plant/:id/fertilize', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -153,7 +161,7 @@ secureApiRouter.post('/plant/:id/fertilize', async (req, res) => {
 
 secureApiRouter.post('/plant/:id/repot', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -175,7 +183,7 @@ secureApiRouter.post('/plant/:id/repot', async (req, res) => {
 
 secureApiRouter.post('/plant/:id/flag', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -199,7 +207,7 @@ secureApiRouter.post('/plant/:id/flag', async (req, res) => {
 // Add Plant
 secureApiRouter.post('/plant', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = { ...req.body }
         await DB.addPlant(plant);
@@ -214,7 +222,7 @@ secureApiRouter.post('/plant', async (req, res) => {
 // Delete Plant
 secureApiRouter.delete('/plant/:id', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -238,7 +246,7 @@ secureApiRouter.delete('/plant/:id', async (req, res) => {
 // Update Plant
 secureApiRouter.put('/plant/:id', async (req, res) => {
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plant = await DB.getPlantById(req.params.id);
         if (plant && user) {
@@ -261,7 +269,7 @@ secureApiRouter.put('/plant/:id', async (req, res) => {
 
 secureApiRouter.post('/search', async (req, res) => { 
     try {
-        authToken = req.headers.authorization.split(' ')[1];
+        authToken = getAuthToken(req, res);
         const user = await DB.getUserByToken(authToken);
         let plants = await DB.searchPlants(req.body.query, user.username, req.body.maxEdits);
         res.send(plants);
