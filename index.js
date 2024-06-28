@@ -293,4 +293,23 @@ const httpService = app.listen(port, () => {
     console.log(`Listening on port ${port}`);
 });
 
-// new PeerProxy(httpService);
+// Graceful shutdown function
+const shutdown = () => {
+    console.log('Received SIGTERM, shutting down gracefully...');
+    httpService.close(() => {
+      console.log('Closed out remaining connections.');
+      process.exit(0);
+    });
+  
+    // Force shutdown if not closed within 10 seconds
+    setTimeout(() => {
+      console.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+  
+  // Listen for TERM signal (e.g., kill)
+  process.on('SIGTERM', shutdown);
+  
+  // Listen for INT signal (e.g., Ctrl-C)
+  process.on('SIGINT', shutdown);
