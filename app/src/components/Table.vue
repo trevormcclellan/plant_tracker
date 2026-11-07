@@ -11,11 +11,12 @@
             <th
               v-for="field in fields"
               :key="field.key"
-              @click="field.sortable ? sortTable(field.key) : ''"
+              scope="col"
               :title="field.sortable ? `Sort by ${field.label}` : field.label"
-              :aria-sort="field.sortable ? getAriaSort(field.key) : ''"
+              :aria-sort="field.sortable ? getAriaSort(field.key) : undefined"
             >
-              {{ field.label }}
+              <button v-if="field.sortable" type="button" class="sort-button" @click="sortTable(field.key)">{{ field.label }}</button>
+              <span v-else>{{ field.label }}</span>
             </th>
             <th v-if="tableData.length">Edit</th>
             <th v-if="tableData.length">Delete</th>
@@ -23,7 +24,7 @@
         </thead>
         <tbody v-if="tableData.length > 0">
           <!-- Loop through the list get the each student data -->
-          <tr v-for="item in tableData" :key="item">
+          <tr v-for="item in sortedData" :key="item._id || item.id">
             <td v-for="field in fields" :key="field.key">
               {{ field.formatter ? field.formatter(item[field.key]) : item[field.key] }}
             </td>
@@ -58,75 +59,51 @@
 </template>
 
 <script>
-import { ref, watch, defineComponent } from "vue";
-
-export default defineComponent({
+export default {
   name: "TableComponent",
+  emits: ["edit", "delete"],
   props: {
-    tableData: {
-      type: Array,
-      required: true,
+    tableData: { type: Array, required: true },
+    fields: { type: Array, required: true },
+    sortBy: { type: String, default: "" },
+  },
+  data() { return { currentSort: "", ascending: true }; },
+  computed: {
+    activeSort() {
+      return this.currentSort || this.sortBy || this.fields.find(field => field.sortable)?.key;
     },
-    fields: {
-      type: Array,
-      required: true,
-    },
-    sortBy: {
-      type: String,
-      default: "",
+    sortedData() {
+      const column = this.activeSort;
+      const rows = [...this.tableData];
+      if (!column) return rows;
+      return rows.sort((a, b) => {
+        const order = a[column] === b[column] ? 0 : a[column] > b[column] ? 1 : -1;
+        return this.ascending ? order : -order;
+      });
     },
   },
-  setup(props) {
-    const currentSort = ref("");
-    const ascending = ref(true);
-
-    watch(() => props.tableData, () => {
-      if (currentSort.value) {
-        let col = currentSort.value;
-        ascending.value ? props.tableData.sort((a, b) => (a[col] > b[col] ? 1 : -1)) : props.tableData.sort((a, b) => (a[col] < b[col] ? 1 : -1));
-      }
-      else if (props.sortBy && props.fields.find((field) => field.key === props.sortBy)) {
-        sortTable(props.sortBy);
-      }
-      else {
-        let sortableColumn = props.fields.find((field) => field.sortable);
-        if (sortableColumn) {
-            sortTable(sortableColumn.key);
-        }
-      }
-    });
-
-    const sortTable = (col) => {
-      if (currentSort.value === col) {
-        props.tableData.reverse();
-        ascending.value = !ascending.value;
-      } else {
-        props.tableData.sort((a, b) => (a[col] > b[col] ? 1 : -1));
-        currentSort.value = col;
-        ascending.value = true;
-      }
-    };
-
-    const getAriaSort = (col) => {
-      const order = ascending.value ? "ascending" : "descending";
-      return currentSort.value === col ? order : "none";
-    };
-
-    const deleteItem = (item) => {
-      // emit an event to the parent component to delete the item
-        this.$emit("delete", item);
-    };
-
-    return {
-      sortTable,
-      getAriaSort,
-      deleteItem,
-    };
+  methods: {
+    sortTable(column) {
+      this.ascending = this.activeSort === column ? !this.ascending : true;
+      this.currentSort = column;
+    },
+    getAriaSort(column) {
+      return this.activeSort === column ? (this.ascending ? "ascending" : "descending") : "none";
+    },
   },
-});
+};
 </script>
 
 <style scoped>
+.sort-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .table-container {
     width: 100%;

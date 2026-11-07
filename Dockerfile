@@ -1,23 +1,9 @@
-# Use the official Node.js:lst runtime as a base image
-FROM node:lts
-
-# Set the working directory in the container
+FROM node:24-bookworm-slim
 WORKDIR /app
-
-# Copy package.json and package-lock.json to the working directory
+ENV NODE_ENV=production PORT=4000
 COPY package*.json ./
-
-# Install the dependencies
-RUN npm install
-
-# Copy the rest of the application code to the working directory
-COPY . .
-
-# Set an environment variable 
-ENV PORT=4000
-
-# Expose the port that the app will run on
+RUN npm ci --omit=dev
+COPY index.js server.js database.js ./
+USER node
 EXPOSE 4000
-
-# Tell docker what command will start the application
-CMD [ "node", "index.js" ]
+CMD ["node", "index.js"]

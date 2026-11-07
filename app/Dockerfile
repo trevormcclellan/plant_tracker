@@ -1,11 +1,10 @@
-FROM node:latest as build-stage
+FROM node:24-bookworm-slim AS build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
-COPY ./ .
+RUN npm ci
+COPY . .
 RUN npm run build
 
-FROM nginx as production-stage
-RUN mkdir /app
+FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/dist /app
 COPY nginx.conf /etc/nginx/nginx.conf

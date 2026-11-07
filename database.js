@@ -1,16 +1,16 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
-const uuid = require('uuid');
+const { randomUUID } = require('node:crypto');
 
 const userName = process.env.MONGOUSER;
 const password = process.env.MONGOPASSWORD;
 const hostname = process.env.MONGOHOSTNAME;
 
-if (!userName || !password || !hostname) {
+if (!process.env.MONGODB_URI && (!userName || !password || !hostname)) {
     throw Error('Database not configured. Set environment variables');
 }
 
-const url = `mongodb+srv://${userName}:${password}@${hostname}`;
+const url = process.env.MONGODB_URI || `mongodb+srv://${encodeURIComponent(userName)}:${encodeURIComponent(password)}@${hostname}`;
 
 const client = new MongoClient(url);
 const userCollection = client.db('startup').collection('user');
@@ -21,7 +21,8 @@ function getUser(username) {
 }
 
 function getUserByToken(token) {
-    return userCollection.findOne({ token: token });
+    if (typeof token !== 'string' || !token) return null;
+    return userCollection.findOne({ token });
 }
 
 async function createUser(username, password) {
@@ -31,7 +32,7 @@ async function createUser(username, password) {
     const user = {
         username: username,
         password: passwordHash,
-        token: uuid.v4(),
+        token: randomUUID(),
     };
     await userCollection.insertOne(user);
 
@@ -39,7 +40,7 @@ async function createUser(username, password) {
 }
 
 async function addPlant(plant) {
-    plantCollection.insertOne(plant);
+    return plantCollection.insertOne(plant);
 }
 
 function getPlantById(id) {
@@ -114,7 +115,31 @@ async function searchPlants(query, owner, maxEdits) {
     return array;
 }
 
+async function initialize() {
+    await client.connect();
+    await userCollection.createIndex({ username: 1 }, { unique: true });
+    await plantCollection.createIndex({ owner: 1 });
+}
+
+async function ensureSession(user) {
+    if (user.token) return user;
+    // Only create a token after logout; simultaneous logins share the same token.
+    await userCollection.updateOne(
+        { _id: user._id, token: { $exists: false } },
+        { $set: { token: randomUUID() }, $unset: { tokenExpiresAt: '' } }
+    );
+    return userCollection.findOne({ _id: user._id });
+}
+
+async function clearSession(user) {
+    await userCollection.updateOne({ _id: user._id, token: user.token }, { $unset: { token: '', tokenExpiresAt: '' } });
+}
+
 module.exports = {
+    initialize,
+    ensureSession,
+    clearSession,
+    close: () => client.close(),
     getUser,
     getUserByToken,
     createUser,

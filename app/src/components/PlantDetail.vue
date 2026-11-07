@@ -1,226 +1,150 @@
 <template>
   <div class="container">
-    <div v-if="loading" id="overlay">
-      <div id="overlay-content">
-        <div class="spinner-border" role="status"><span class="sr-only"></span></div>
-        <div>Loading...</div>
-      </div>
+    <Navbar class="mb-3">
+      <router-link class="btn btn-outline-success back-to-plants d-inline-flex align-items-center gap-2" to="/">
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5m7-7-7 7 7 7" />
+        </svg>
+        <span>Back to plants</span>
+      </router-link>
+    </Navbar>
+    <p v-if="loading" role="status">Loading plant…</p>
+    <div v-if="error" class="alert alert-danger" role="alert">
+      <p>{{ error }}</p>
+      <button type="button" class="btn btn-outline-danger" :disabled="loading" @click="fetchPlantDetails()">Retry loading plant</button>
     </div>
-    <div id="alerts" class="fixed-top">
-      <div v-if="negativeAlert" id="negative-alert-popup" class="alert alert-danger" role="alert">{{ alertText }}</div>
-      <div v-if="positiveAlert" id="positive-alert-popup" class="alert alert-success" role="alert">{{ alertText }}</div>
-    </div>
-    <Modal :showModal="showModal" :loading="loading" :hideFooter="editingPlant" @closeModal="handleCloseModal">
-      <template #title>{{modalTitle}}</template>
-      <EditPlant v-if="editingPlant" @updatePlant="updatePlant" @showSuccess="showSuccess" @showError="showError" :plant="plant"></EditPlant>
-      <p v-else>{{ deleteMessage }}</p>
+    <div v-if="success" class="alert alert-success" role="status">{{ success }}</div>
+    <Modal :showModal="showModal" :loading="saving" :hideFooter="editingPlant" @closeModal="handleCloseModal">
+      <template #title>{{ editingPlant ? 'Edit Plant' : 'Delete Plant' }}</template>
+      <EditPlant v-if="showModal && editingPlant && plant" :plant="plant" @updatePlant="updatePlant" @pending="saving = $event" />
+      <template v-else>
+        <p>Are you sure you want to delete {{ plant?.name }}?</p>
+        <div v-if="deleteError" class="alert alert-danger" role="alert">{{ deleteError }}</div>
+      </template>
     </Modal>
-    <!-- Display plant details -->
-    <div class="title-div">
-      <h1 class="card-title">{{ plant.name }}</h1>
-      <div class="mt-2 mb-3 btn-group" role="group">
-        <button @click="editPlant" class="btn btn-secondary">Edit</button>
-        <button @click="deletePlant" class="btn btn-danger" id="delete-button">
-          Delete
-        </button>
-      </div>
-    </div>
-
-    <!-- Display past actions with fixed scrolling -->
-    <h5 class="card-title">Past Actions</h5>
-    <div class="card" id="past-actions">
-      <div class="card-body past-actions-scrollable">
-        <div class="list-group" v-if="plant.actions?.length">
-          <a
-            v-for="action in actions"
-            :key="action.id"
-            href="#"
-            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-          >
-            <!-- Icon based on action type -->
-            <img
-              v-if="action.type === 'Watered'"
-              src="@/assets/icons/water.png"
-              alt="Water"
-              class="action-icon"
-            />
-            <img
-              v-else-if="action.type === 'Fertilized'"
-              src="@/assets/icons/fertilize.png"
-              alt="Fertilize"
-              class="action-icon"
-            />
-            <img
-              v-else-if="action.type === 'Repotted'"
-              src="@/assets/icons/repot.png"
-              alt="Repot"
-              class="action-icon"
-            />
-
-            <!-- Action details -->
-            <div class="action-details">
-              <span class="action-type">{{ action.type }}</span>
-            </div>
-            <span class="action-date">{{
-              new Date(action.time).toLocaleDateString()
-            }}</span>
-          </a>
+    <template v-if="plant">
+      <div class="title-div">
+        <h1 class="card-title">{{ plant.name }}</h1>
+        <div class="mt-2 mb-3 btn-group" role="group" aria-label="Manage plant">
+          <button type="button" @click="openModal(true)" :disabled="saving || loading" class="btn btn-secondary">Edit</button>
+          <button type="button" @click="openModal(false)" :disabled="saving || loading" class="btn btn-danger">Delete</button>
         </div>
-        <div v-else>None yet</div>
       </div>
-    </div>
+      <h2 class="h5 card-title">Past Actions</h2>
+      <div class="card" id="past-actions" tabindex="0" role="region" aria-label="Past actions">
+        <div class="card-body past-actions-scrollable">
+          <ul class="list-group" v-if="actions.length">
+            <li v-for="(action, index) in actions" :key="action._id || action.id || `${action.time}-${index}`"
+              class="list-group-item d-flex justify-content-between align-items-center">
+              <img v-if="action.type === 'Watered'" src="@/assets/icons/water.png" alt="" class="action-icon" />
+              <img v-else-if="action.type === 'Fertilized'" src="@/assets/icons/fertilize.png" alt="" class="action-icon" />
+              <img v-else-if="action.type === 'Repotted'" src="@/assets/icons/repot.png" alt="" class="action-icon" />
+              <div class="action-details"><span class="action-type">{{ action.type }}</span></div>
+              <span class="action-date">{{ new Date(action.time).toLocaleDateString() }}</span>
+            </li>
+          </ul>
+          <p v-else>No care recorded yet. Use the care buttons on your plants list to add an action.</p>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
+
 <script>
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import axios from "axios";
 import Modal from "./Modal.vue";
+import Navbar from "./Navbar.vue";
 import EditPlant from "./EditPlant.vue";
+import { apiError } from "../api";
 
 export default {
-  components: {
-    Modal,
-    EditPlant,
-  },
-  props: {
-    id: String, // Prop for the plant ID
-  },
-  setup(props) {
-    const router = useRouter();
-    const plant = ref({actions: []});
-    const showModal = ref(false);
-    const modalTitle = ref("");
-    const deleteMessage = ref("");
-    const loading = ref(false);
-    const editingPlant = ref(false);
-    const negativeAlert = ref(false);
-    const positiveAlert = ref(false);
-    const alertText = ref("");
-
-    const fetchPlantDetails = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.VUE_APP_API_ORIGIN}/api/plant/${props.id}`
-        );
-        if (response.status === 200) {
-          plant.value = response.data;
-        }
-      } catch (error) {
-        router.push("/"); // Redirect to home page if plant not found
-        console.error("Error fetching plant details:", error);
-        // Handle error (e.g., show an error message)
-      }
-    };
-
-    const editPlant = () => {
-      // Handle editing the plant (e.g., navigate to edit page)
-      modalTitle.value = "Edit Plant";
-      editingPlant.value = true;
-      showModal.value = true;
-    };
-
-    const deletePlant = () => {
-      // Handle deleting the plant (e.g., show confirmation modal)
-      editingPlant.value = false;
-      modalTitle.value = "Delete Plant";
-      deleteMessage.value = `Are you sure you want to delete ${plant.value.name}?`;
-      showModal.value = true;
-    };
-
-    const updatePlant = (updatedPlant) => {
-      showModal.value = false;
-      plant.value = updatedPlant;
-      editingPlant.value = false;
-    };
-
-    const handleCloseModal = async (val) => {
-      // Handle closing the modal (e.g., hide modal)
-      showModal.value = false;
-      if (val) {
-        try {
-          loading.value = true;
-          const response = await axios.delete(
-            `${process.env.VUE_APP_API_ORIGIN}/api/plant/${props.id}`
-          );
-          loading.value = false;
-          if (response.status === 200) {
-            router.push("/");
-          }
-        } catch (error) {
-          loading.value = false;
-          console.error("Error deleting plant:", error);
-          showError(error);
-        }
-      }
-    };
-
-    const showSuccess = () => {
-      showModal.value = false;
-      positiveAlert.value = true;
-      alertText.value = `Plant updated successfully.`;
-
-      setTimeout(() => {
-        alertText.value = "";
-        positiveAlert.value = false;
-      }, 3000);
-    };
-
-    const showError = (error, editing=false) => {
-      showModal.value = false;
-      negativeAlert.value = true;
-
-      if (error.response?.data?.message) {
-        alertText.value = "Error: " + error.response.data.message;
-      } else {
-        alertText.value = `There was an error ${editing ? 'updating' : 'deleting'} the plant.`;
-      }
-
-      setTimeout(() => {
-        alertText.value = "";
-        negativeAlert.value = false;
-      }, 10000);
-    };
-
-    // Fetch plant details when the component is mounted
-    onMounted(() => {
-      fetchPlantDetails();
-    });
-
+  components: { Modal, EditPlant, Navbar },
+  props: { id: String },
+  data() {
     return {
-      plant,
-      editPlant,
-      deletePlant,
-      updatePlant,
-      showModal,
-      modalTitle,
-      deleteMessage,
-      handleCloseModal,
-      loading,
-      editingPlant,
-      showSuccess,
-      showError,
-      negativeAlert,
-      positiveAlert,
-      alertText,
+      plant: null, loading: false, saving: false, showModal: false, editingPlant: false,
+      error: "", deleteError: "", success: "", requestVersion: 0,
     };
   },
+  watch: {
+    id: {
+      immediate: true,
+      handler() {
+        this.plant = null;
+        this.showModal = false;
+        this.success = "";
+        this.fetchPlantDetails(true);
+      },
+    },
+  },
+  beforeUnmount() { this.requestVersion++; },
   computed: {
-    actions: function () {
-      return this.plant.actions.sort((a, b) => {
-        return new Date(b.time) - new Date(a.time);
-      });
+    actions() { return [...(this.plant?.actions || [])].sort((a, b) => Date.parse(b.time) - Date.parse(a.time)); },
+  },
+  methods: {
+    async fetchPlantDetails(force = false) {
+      if (this.loading && !force) return;
+      const version = ++this.requestVersion;
+      this.loading = true;
+      this.error = "";
+      try {
+        const response = await axios.get(`${process.env.VUE_APP_API_ORIGIN}/api/plant/${this.id}`);
+        if (version === this.requestVersion) this.plant = response.data;
+      } catch (error) {
+        if (version === this.requestVersion) this.error = apiError(error, "Could not load this plant.");
+      } finally {
+        if (version === this.requestVersion) this.loading = false;
+      }
+    },
+    openModal(editing) {
+      if (this.loading || this.saving || !this.plant) return;
+      this.editingPlant = editing;
+      this.deleteError = "";
+      this.success = "";
+      this.showModal = true;
+    },
+    updatePlant(plant) {
+      this.plant = plant;
+      this.showModal = false;
+      this.success = "Plant updated successfully.";
+    },
+    async handleCloseModal(confirm) {
+      if (this.saving) return;
+      if (!confirm || this.editingPlant) {
+        this.showModal = false;
+        return;
+      }
+      this.saving = true;
+      this.deleteError = "";
+      try {
+        await axios.delete(`${process.env.VUE_APP_API_ORIGIN}/api/plant/${this.id}`);
+        this.showModal = false;
+        await this.$router.push({ name: "home" });
+      } catch (error) {
+        this.deleteError = apiError(error, "Could not delete the plant.", { mutation: true });
+      } finally {
+        this.saving = false;
+      }
     },
   },
 };
 </script>
 <style scoped>
+.back-to-plants {
+  color: #198754;
+}
+
+.back-to-plants:hover,
+.back-to-plants:focus-visible {
+  color: white;
+}
+
 /* Add your custom styles here if needed */
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Ensure full viewport height */
-  overflow: hidden; /* Hide any overflowing content */
+  min-height: 100vh;
+
 }
 
 .card {

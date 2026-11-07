@@ -1,23 +1,31 @@
 <template>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand">DNS Records</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item active">
-                    <a class="nav-link" @click="logout" href="#">Logout</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+  <nav class="navbar bg-light px-3 py-2" aria-label="Plant navigation">
+    <slot />
+    <LogoutButton class="ms-auto" />
+  </nav>
 </template>
 
 <script>
+import LogoutButton from "./LogoutButton.vue";
+
 export default {
-    methods: {
-        logout() {
-            this.$store.commit('setToken', null);
-            this.$router.push('/login');
-        }
-    }
-}
+  components: { LogoutButton },
+};
 </script>
+
+<style scoped>
+.navbar {
+  isolation: isolate;
+}
+
+.navbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Extend only the background, preserving content alignment and page width. */
+  box-shadow: 0 0 0 100vmax rgb(var(--bs-light-rgb));
+  clip-path: inset(0 -100vmax);
+}
+</style>

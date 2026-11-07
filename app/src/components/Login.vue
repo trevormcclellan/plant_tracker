@@ -1,64 +1,69 @@
 <template>
   <div class="login-container">
     <h2>Login</h2>
-    <form @submit.prevent="login" class="login-form">
+    <p v-if="$route.query.expired" class="alert alert-info" role="status">Your session is no longer valid. Please log in again.</p>
+    <form @submit.prevent="login" class="login-form" :aria-busy="loading">
+      <div v-if="error" id="auth-error" class="alert alert-danger" role="alert">{{ error }}</div>
       <div class="form-group">
         <label for="username">Username:</label>
-        <input
-          v-model="username"
-          id="username"
-          name="username"
-          type="text"
-          class="form-control"
-        />
+        <input v-model="username" id="username" name="username" type="text" class="form-control"
+          autocomplete="username" autocapitalize="none" :spellcheck="false" required maxlength="100"
+          :disabled="loading" :aria-invalid="!!error" :aria-describedby="error ? 'auth-error' : undefined" />
       </div>
       <div class="form-group">
         <label for="password">Password:</label>
-        <input
-          v-model="password"
-          id="password"
-          name="password"
-          type="password"
-          class="form-control"
-        />
+        <input v-model="password" id="password" name="password" type="password" class="form-control"
+          autocomplete="current-password" required :disabled="loading"
+          :aria-invalid="!!error" :aria-describedby="error ? 'auth-error' : undefined" />
+
       </div>
-      <button type="submit" class="btn btn-primary">Login</button>
+
+      <button type="submit" class="btn btn-primary" :disabled="loading">{{ loading ? 'Please wait…' : 'Login' }}</button>
     </form>
-    Register <router-link to="/register">here</router-link>
+    <p>New here? <router-link to="/register">Register</router-link></p>
   </div>
 </template>
-  
-  <script>
+
+<script>
 import axios from "axios";
+import { apiError } from "../api";
+
 export default {
   data() {
-    return {
-      username: "",
-      password: "",
-    };
+    return { username: "", password: "", confirmPassword: "", loading: false, error: "" };
   },
   methods: {
     async login() {
-      const response = await axios.post(
-        `${process.env.VUE_APP_API_ORIGIN}/api/auth/login`,
-        {
+      if (this.loading) return;
+      this.error = "";
+      if (!this.username.trim() || this.username.length > 100 || !this.password) {
+        this.error = "Enter a username of 1–100 characters and your password.";
+        return;
+      }
+      this.loading = true;
+      try {
+        const response = await axios.post(`${process.env.VUE_APP_API_ORIGIN}/api/auth/login`, {
           username: this.username,
           password: this.password,
-        },
-      );
-      if (response.status === 200) {
-        localStorage.setItem("username", this.username);
+        });
+        if (typeof response.data?.token !== "string" || !response.data.token) {
+          this.error = "The server did not return a login session. Please log in again.";
+          return;
+        }
+        localStorage.setItem("username", response.data.username || this.username);
         localStorage.setItem("token", response.data.token);
-        this.$router.push({ name: "home" });
-      } else {
-        alert("Login failed, please check your username and password");
+        await this.$router.push({ name: "home" });
+      } catch (error) {
+        this.error = apiError(error, "Could not log in.", { auth: true });
+      } finally {
+        this.loading = false;
       }
     },
   },
 };
 </script>
-  
-  <style scoped>
+
+<style scoped>
 .login-container {
   display: flex;
   flex-direction: column;
@@ -114,4 +119,4 @@ button:hover {
   background-color: #0056b3;
 }
 </style>
-  
+

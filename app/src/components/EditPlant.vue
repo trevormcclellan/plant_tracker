@@ -1,86 +1,63 @@
 <template>
   <div>
-    <form @submit.prevent="submitForm">
+    <form @submit.prevent="submitForm" :aria-busy="loading">
+      <div v-if="error" id="edit-plant-error" class="alert alert-danger" role="alert">{{ error }}</div>
       <div class="mb-3">
-        <label for="domain">Name:</label>
-        <input class="form-control" type="text" id="domain" v-model="name" required />
+        <label for="edit-plant-name">Name:</label>
+        <input class="form-control" type="text" id="edit-plant-name" v-model="name" required maxlength="200"
+          :disabled="loading" :aria-invalid="!!error" :aria-describedby="error ? 'edit-plant-error' : undefined" />
       </div>
-
       <button :disabled="loading" class="form-control btn btn-success" type="submit">
-        <div v-if="loading">
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span class="sr-only"> Loading...</span>
-        </div>
-        <span v-else>Submit</span>
+        <span v-if="loading" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        {{ loading ? 'Saving…' : 'Submit' }}
       </button>
     </form>
   </div>
 </template>
-  
+
 <script>
 import axios from "axios";
-import { ref, watchEffect } from "vue";
+import { apiError } from "../api";
 
 export default {
-  props: {
-    plant: {},
+  props: { plant: { type: Object, required: true } },
+  emits: ["updatePlant", "showSuccess", "pending"],
+  data() {
+    return { name: this.plant.name, loading: false, error: "" };
   },
-  emits: ["updatePlant", "showSuccess", "showError"],
-  setup(props, { emit }) {
-    const name = ref("");
-    const loading = ref(false);
-
-    if (props.plant) {
-      name.value = props.plant.name;
-    }
-
-    watchEffect(() => {
-      if (props.plant) {
-        name.value = props.plant.name;
+  watch: {
+    "plant._id"() { this.name = this.plant.name; this.error = ""; },
+  },
+  methods: {
+    async submitForm() {
+      if (this.loading) return;
+      this.error = "";
+      const name = this.name.trim();
+      if (!name || name.length > 200) {
+        this.error = "Enter a plant name of 1–200 characters.";
+        return;
       }
-    });
-
-    const resetForm = () => {
-      name.value = "";
-    };
-
-    const submitForm = async () => {
+      this.loading = true;
+      this.$emit("pending", true);
       try {
-        let response;
-        loading.value = true;
-        response = await axios.put(
-          `${process.env.VUE_APP_API_ORIGIN}/api/plant/${props.plant._id}`,
-          { "name": name.value },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
+        const response = await axios.put(
+          `${process.env.VUE_APP_API_ORIGIN}/api/plant/${this.plant._id}`,
+          { name }
         );
-
-        loading.value = false;
-        resetForm();
-        if (response.status === 200) {
-          emit("updatePlant", response.data);
-          emit("showSuccess", true);
-        }
+        this.$emit("updatePlant", response.data);
+        this.$emit("showSuccess");
       } catch (error) {
-        loading.value = false;
-        emit("showError", error, true);
+        this.error = apiError(error, "Could not update the plant.", { mutation: true });
+      } finally {
+        this.loading = false;
+        this.$emit("pending", false);
       }
-    };
-
-    return {
-      name,
-      loading,
-      resetForm,
-      submitForm,
-    };
+    },
   },
 };
 </script>
 
-<style>
+<style scoped>
 form {
   padding: 20px;
   border-radius: 8px;

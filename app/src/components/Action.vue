@@ -1,70 +1,60 @@
 <template>
   <div class="container">
-    <form @submit.prevent="submitForm">
+    <form @submit.prevent="submitForm" :aria-busy="loading">
+      <div v-if="error" id="add-plant-error" class="alert alert-danger" role="alert">{{ error }}</div>
       <div class="mb-3">
-        <label for="domain">Name:</label>
-        <input class="form-control" type="text" id="domain" v-model="name" required />
+        <label for="add-plant-name">Name:</label>
+        <input class="form-control" type="text" id="add-plant-name" v-model="name" required maxlength="200"
+          :disabled="loading" :aria-invalid="!!error" :aria-describedby="error ? 'add-plant-error' : undefined" />
       </div>
-
       <button :disabled="loading" class="form-control btn btn-success" type="submit">
-        <div v-if="loading">
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span class="sr-only"> Loading...</span>
-        </div>
-        <span v-else>Submit</span>
+        <span v-if="loading" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        {{ loading ? 'Saving…' : 'Submit' }}
       </button>
     </form>
   </div>
 </template>
-  
+
 <script>
 import axios from "axios";
+import { apiError } from "../api";
 
 export default {
+  emits: ["getPlants", "showSuccess", "pending"],
   data() {
-    return {
-      name: "",
-      loading: false,
-    };
+    return { name: "", loading: false, error: "" };
   },
   methods: {
-    resetForm() {
-      this.name = "";
-    },
-    async  submitForm() {
+    async submitForm() {
+      if (this.loading) return;
+      this.error = "";
+      const name = this.name.trim();
+      if (!name || name.length > 200) {
+        this.error = "Enter a plant name of 1–200 characters.";
+        return;
+      }
+      this.loading = true;
+      this.$emit("pending", true);
       try {
-        // Process the form submission
-        let response;
-        this.loading = true;
-
-        response = await axios.post(
-              `${process.env.VUE_APP_API_ORIGIN}/api/plant`,
-              { "name": this.name, "owner": localStorage.getItem("username") },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-        this.loading = false;
-        this.resetForm();
-        if (response.status === 201) {
-          this.$emit("getPlants");
-          // Make a success alert
-          this.$emit("showSuccess")
-        }
+        const response = await axios.post(
+          `${process.env.VUE_APP_API_ORIGIN}/api/plant`,
+          { name, owner: localStorage.getItem("username") }
+        );
+        this.$emit("getPlants", response.data);
+        this.$emit("showSuccess");
+        this.name = "";
       } catch (error) {
+        this.error = apiError(error, "Could not add the plant.", { mutation: true });
+      } finally {
         this.loading = false;
-        // Make an error alert
-        this.$emit("showError", error)
+        this.$emit("pending", false);
       }
     },
   },
 };
 </script>
 
-<style>
+<style scoped>
 form {
   padding: 20px;
   border-radius: 8px;
