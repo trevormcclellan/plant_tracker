@@ -115,6 +115,11 @@ async function searchPlants(query, owner, maxEdits) {
     return array;
 }
 
+function ping() {
+    // Bound the entire operation, including waiting for an available server.
+    return client.db('startup').command({ ping: 1 }, { timeoutMS: 2000 });
+}
+
 async function initialize() {
     await client.connect();
     await userCollection.createIndex({ username: 1 }, { unique: true });
@@ -137,6 +142,7 @@ async function clearSession(user) {
 
 module.exports = {
     initialize,
+    ping,
     ensureSession,
     clearSession,
     close: () => client.close(),

@@ -4,7 +4,7 @@ A Vue/Bootstrap plant care tracker with an Express API and MongoDB storage.
 
 ## Run locally
 
-Use Node **24.11 or newer** (Node 24 LTS recommended; `.nvmrc` selects 24).
+Use **Node 26 LTS, version 26.13.0 or newer within the 26.x line**. `.nvmrc` and the Dockerfiles select Node 26; CI checks for the latest Node 26 release. With nvm, run `nvm install` and `nvm use` from the repository root.
 
 ```sh
 npm ci
@@ -42,3 +42,30 @@ API tests use a fake database to verify authentication, ownership, input validat
 - The API assigns ownership, restricts editable fields, validates credentials and IDs, limits authentication attempts and request sizes, hides internal errors, and returns security headers. Browser tokens remain in localStorage; use HTTPS and keep the content security policy in place.
 - New passwords require at least eight characters and no more than 72 UTF-8 bytes (bcrypt's limit). Existing shorter passwords still work.
 - Authentication rate limiting is in memory and applies per API instance. Behind a reverse proxy, clients conservatively share its limit; configure Express `trust proxy` only for your actual trusted proxy topology if individual client limits are needed.
+
+## Dependency maintenance
+
+[Dependabot configuration](.github/dependabot.yml) checks both npm projects, both Dockerfiles, and GitHub Actions quarterly (January 1, April 1, July 1, October 1). Minor/patch version updates are grouped per ecosystem and directory; major versions remain individual PRs. Security updates are independent of the routine schedule. See the [GitHub configuration reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).
+
+[CI](.github/workflows/ci.yml) installs committed lockfiles on Node 26, runs API/session tests, builds the frontend, runs Chromium smoke tests with mocked APIs, and builds both Docker images. It runs for pull requests, pushes to `main`, and manual runs. It requires no production secrets or live database and does not push images, auto-merge, or deploy.
+
+After merging these files into the default branch, configure the repository in GitHub:
+
+- Enable **Dependency Graph**, **Dependabot Alerts**, and **Dependabot Security Updates** under the repository's security settings. YAML alone does not enable these settings. See [GitHub's security-update setup](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configure-security-updates).
+- Require human review and the **Tests and builds** check before merging through branch protection or a ruleset. Leave auto-merge disabled.
+- Review critical alerts as soon as practical (target 24–48 hours), applicable high-severity alerts within seven days, and medium/low alerts at the next quarterly review unless exposure warrants sooner. These are review targets, not delays imposed on security PRs.
+
+Compose currently uses only `build:` services, so there is no `docker-compose` Dependabot entry. Add one if service `image:` references are introduced. Dependabot's Docker checks track base-image references, not every OS package vulnerability inside the images. The current floating tags (especially `nginx:stable-alpine`) can receive new image contents without a manifest PR; review image advisories and rebuild with `--pull` after approval. Review runtime support separately each quarter, keeping `.nvmrc`, package engine requirements, and Docker Node versions aligned.
+
+After reviewing and merging an update, use the existing Compose deployment process: rebuild with a base-image pull and recreate services, then inspect service status/logs and manually check login and plant operations. Confirm backups and a rollback path before database migrations; routine updates do not require `docker compose down` or deleting volumes.
+
+## Container health
+
+Both Docker images include health checks that run every 30 seconds and mark the container unhealthy after three consecutive failures:
+
+- **Backend:** requests `GET /api/health` on its local `PORT` (default 4000). This public, non-cached readiness endpoint returns HTTP 200 only when MongoDB answers a ping, or HTTP 503 with a generic status if the database is unavailable. The database operation has a two-second timeout, the HTTP probe has a four-second timeout, and Docker allows five seconds per check. Startup has a 30-second grace period.
+- **Frontend:** checks that nginx can serve the app's root page on port 80. It uses the image's built-in `wget`, with a three-second request timeout, a five-second Docker timeout, and a ten-second startup grace period. Backend availability is tracked separately.
+
+Compose waits for a healthy backend before starting the frontend. These checks report health; they do not automatically restart or deploy containers. See [Docker's startup-order documentation](https://docs.docker.com/compose/how-tos/startup-order).
+
+After an approved rebuild and recreation, use `docker compose ps` to see health status. To inspect recent failures, run `docker inspect --format '{{json .State.Health}}' CONTAINER_NAME` using the container name from that output. No database data is changed by the health probe.

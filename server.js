@@ -17,6 +17,15 @@ function createApp(DB, { authLimit = 30 } = {}) {
   const fail = (res, status, msg) => res.status(status).json({ msg });
   const validText = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: authLimit, standardHeaders: 'draft-8', legacyHeaders: false, message: { msg: 'Too many attempts. Please try again in 15 minutes.' } });
+  // Readiness is public so Docker can check it without a user's session.
+  api.get('/health', async (_req, res) => {
+    try {
+      await DB.ping();
+      res.json({ status: 'ok' });
+    } catch {
+      res.status(503).json({ status: 'unavailable' });
+    }
+  });
   api.use('/auth/login', authLimiter);
   api.use('/auth/register', authLimiter);
   for (const action of ['register', 'login']) {

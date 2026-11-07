@@ -1,0 +1,54 @@
+# Routine updates follow the quarterly policy; security updates are independent.
+# Enable Dependency Graph, Dependabot Alerts, and Security Updates in GitHub.
+# Major updates remain individual PRs. Nothing auto-merges or deploys.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "quarterly"
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/app"
+    schedule:
+      interval: "quarterly"
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "quarterly"
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker"
+    directory: "/app"
+    schedule:
+      interval: "quarterly"
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "quarterly"
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

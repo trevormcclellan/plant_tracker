@@ -96,3 +96,30 @@ test('successful care operations preserve response format', async t => {
     assert.equal(result.body.actions[0].type, label);
   }
 });
+
+test('health check succeeds without authentication when the database responds', async t => {
+  let pings = 0;
+  const { request } = await setup(t, {
+    ping: async () => { pings++; },
+    getUserByToken: () => { throw Error('health must not depend on a session'); },
+  });
+  const result = await request('/health', { auth: null });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { status: 'ok' });
+  assert.equal(result.headers.get('cache-control'), 'no-store');
+  assert.equal(pings, 1);
+  assert.equal((await request('/plants', { auth: null })).status, 401);
+});
+
+test('health check reports database failure safely and recovers', async t => {
+  let unavailable = true;
+  const { request } = await setup(t, {
+    ping: async () => { if (unavailable) throw Error('database-host-and-credentials'); },
+  });
+  const result = await request('/health', { auth: null });
+  assert.equal(result.status, 503);
+  assert.deepEqual(result.body, { status: 'unavailable' });
+  assert.equal(result.headers.get('cache-control'), 'no-store');
+  unavailable = false;
+  assert.equal((await request('/health', { auth: null })).status, 200);
+});
