@@ -4,9 +4,16 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const path = require('node:path');
+const { isIP } = require('node:net');
 
-function createApp(DB, { authLimit = 30 } = {}) {
+function createApp(DB, { authLimit = 30, trustedProxies = process.env.TRUSTED_PROXIES || '' } = {}) {
   const app = express();
+  const proxyIPs = trustedProxies.split(',').map(ip => ip.trim()).filter(Boolean);
+  if (proxyIPs.some(ip => !isIP(ip))) {
+    throw new Error('TRUSTED_PROXIES must contain comma-separated proxy IP addresses.');
+  }
+  // Match known peers rather than a hop count: tunnel routes can have different lengths.
+  if (proxyIPs.length) app.set('trust proxy', proxyIPs);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: [process.env.CLIENT_ORIGIN, process.env.DEV_CLIENT_ORIGIN].filter(Boolean) }));

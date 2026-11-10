@@ -23,9 +23,9 @@ async function setup(t, overrides = {}, options) {
   const server = createApp(DB, options).listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
-  const request = async (path, { auth = token, body, method = 'GET' } = {}) => {
+  const request = async (path, { auth = token, body, method = 'GET', headers = {} } = {}) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api${path}`, {
-      method, headers: { ...(auth ? { Authorization: `Bearer ${auth}` } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      method, headers: { ...headers, ...(auth ? { Authorization: `Bearer ${auth}` } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(3000),
     });
     return { status: response.status, headers: response.headers, body: response.status === 204 ? null : await response.json() };
@@ -122,4 +122,39 @@ test('health check reports database failure safely and recovers', async t => {
   assert.equal(result.headers.get('cache-control'), 'no-store');
   unavailable = false;
   assert.equal((await request('/health', { auth: null })).status, 200);
+});
+
+
+test('trusted tunnel routes share the real visitor limit, not the proxy limit', async t => {
+  // The local test server represents nginx or the direct tunnel connection.
+  const { request } = await setup(t, {}, {
+    authLimit: 2, trustedProxies: '127.0.0.1, 192.168.82.10',
+  });
+  const login = forwardedFor => request('/auth/login', {
+    method: 'POST', body: {}, headers: { 'X-Forwarded-For': forwardedFor },
+  });
+  assert.equal((await login('203.0.113.1')).status, 400);
+  assert.equal((await login('203.0.113.1, 192.168.82.10')).status, 400);
+  // An invented leftmost address must not bypass the real visitor's limit.
+  assert.equal((await login('198.51.100.9, 203.0.113.1, 192.168.82.10')).status, 429);
+  assert.equal((await login('203.0.113.2, 192.168.82.10')).status, 400);
+});
+
+test('untrusted peers cannot change their rate-limit identity with forwarded headers', async t => {
+  const { request } = await setup(t, {}, {
+    authLimit: 1, trustedProxies: '192.168.82.3',
+  });
+  for (const [ip, status] of [['203.0.113.1', 400], ['203.0.113.2', 429]]) {
+    assert.equal((await request('/auth/login', {
+      method: 'POST', body: {}, headers: { 'X-Forwarded-For': ip },
+    })).status, status);
+  }
+});
+
+test('proxy trust requires an explicit list of IP addresses', () => {
+  assert.equal(createApp({}, { trustedProxies: '' }).get('trust proxy'), false);
+  assert.deepEqual(createApp({}, { trustedProxies: '192.168.82.3, ::1' }).get('trust proxy'), ['192.168.82.3', '::1']);
+  for (const value of ['true', '1', 'uniquelocal', '192.168.82.0/24']) {
+    assert.throws(() => createApp({}, { trustedProxies: value }), /TRUSTED_PROXIES/);
+  }
 });

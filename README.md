@@ -41,7 +41,7 @@ API tests use a fake database to verify authentication, ownership, input validat
 - Startup creates a unique username index and an owner index. Back up the database before deployment. If duplicate usernames already exist, index creation fails rather than silently modifying or deleting accounts; resolve duplicates before restarting.
 - The API assigns ownership, restricts editable fields, validates credentials and IDs, limits authentication attempts and request sizes, hides internal errors, and returns security headers. Browser tokens remain in localStorage; use HTTPS and keep the content security policy in place.
 - New passwords require at least eight characters and no more than 72 UTF-8 bytes (bcrypt's limit). Existing shorter passwords still work.
-- Authentication rate limiting is in memory and applies per API instance. Behind a reverse proxy, clients conservatively share its limit; configure Express `trust proxy` only for your actual trusted proxy topology if individual client limits are needed.
+- Authentication rate limiting is in memory and applies per API instance. Behind a reverse proxy, configure `TRUSTED_PROXIES` with the exact local IP addresses of the proxies (see below) so visitors have separate limits. With this unset, Express does not trust forwarded client addresses.
 
 ## Dependency maintenance
 
@@ -69,3 +69,22 @@ Both Docker images include health checks that run every 30 seconds and mark the 
 Compose waits for a healthy backend before starting the frontend. These checks report health; they do not automatically restart or deploy containers. See [Docker's startup-order documentation](https://docs.docker.com/compose/how-tos/startup-order).
 
 After an approved rebuild and recreation, use `docker compose ps` to see health status. To inspect recent failures, run `docker inspect --format '{{json .State.Health}}' CONTAINER_NAME` using the container name from that output. No database data is changed by the health probe.
+
+## Cloudflare Tunnel and client addresses
+
+Set `TRUSTED_PROXIES` in the backend's environment to a comma-separated list of exact proxy IP addresses. The backend accepts IPv4 and IPv6 addresses, leaves proxy trust disabled when the list is empty, and rejects broad settings such as `true`, hop counts, or subnet names. nginx appends its actual peer to `X-Forwarded-For` before forwarding `/api` requests. Express then walks the chain from the backend toward the visitor, stopping at the first untrusted address.
+
+For the server's two tunnel routes:
+
+- `plants.tsmcclel.top` → frontend (`192.168.82.3`) → backend: trust the frontend IP **and** the cloudflared connector's local source IP.
+- `plantsapi.tsmcclel.top` → backend directly: trust the connector's local source IP. The same allowlist handles both paths.
+
+The connector IP is the address seen by these containers; depending on its network mode, this can be the connector container's IP or its host's IP. Do not substitute Cloudflare's public edge IP ranges or trust the entire LAN. For this server, the frontend access log confirms the connector's source IP is `192.168.82.2`. Set the following in `/home/tsmcclel/apps/plant_tracker/.env`, which the server Compose file loads for the backend:
+
+```env
+TRUSTED_PROXIES=192.168.82.3,192.168.82.2
+```
+
+The frontend `.3` and connector `.2` are proxies; the backend `.4` and visitor addresses should not be included. If multiple connectors serve the tunnel, include each connector's source IP. Rebuild both app images and recreate the services to apply the code, nginx, and environment changes.
+
+The frontend uses the same-origin `/api` route by default, so the separate API hostname is not required for the current UI. Keep it if other clients use it. See [Express proxy configuration](https://expressjs.com/en/guide/behind-proxies/) and [Cloudflare's forwarded-header behavior](https://developers.cloudflare.com/fundamentals/reference/http-headers/#x-forwarded-for).
